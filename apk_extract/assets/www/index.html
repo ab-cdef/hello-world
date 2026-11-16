@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>倒班助手</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:linear-gradient(160deg,#f0f4f8 0%,#e2e8f0 50%,#f0f4f8 100%);min-height:100vh;color:#334155;padding:16px;padding-bottom:80px}
+h1{text-align:center;font-size:22px;margin:12px 0 20px;color:#1e293b;font-weight:700;letter-spacing:1px}
+.card{background:rgba(255,255,255,0.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.6);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
+.card h2{font-size:16px;color:#475569;margin-bottom:14px;font-weight:600;display:flex;align-items:center;gap:6px}
+.card h2::before{content:'';width:4px;height:16px;background:#10b981;border-radius:2px;display:inline-block;flex-shrink:0}
+
+/* Calendar */
+.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.cal-nav{display:flex;align-items:center;gap:10px}
+.cal-nav-btn{font-size:18px;color:#64748b;cursor:pointer;padding:4px 8px;border-radius:8px;transition:all 0.15s;user-select:none}
+.cal-nav-btn:active{background:rgba(0,0,0,0.06);color:#0f172a}
+.cal-title{font-size:20px;font-weight:700;color:#1e293b;min-width:120px;text-align:center}
+.cal-today-btn{font-size:11px;color:#10b981;cursor:pointer;padding:3px 10px;border-radius:6px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.08);transition:all 0.15s;user-select:none}
+.cal-today-btn:active{transform:scale(0.95)}
+.cal-tag{padding:4px 14px;border-radius:20px;font-size:13px;font-weight:700;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.1)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-hdr{text-align:center;font-size:12px;color:#94a3b8;padding:6px 0;font-weight:600}
+.cal-hdr.weekend{color:#f97316}
+.cal-cell{text-align:center;padding:7px 0 9px;border-radius:8px;position:relative;min-height:54px;transition:background 0.15s}
+.cal-cell.today{background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3)}
+.cal-cell.other-month{opacity:0.35}
+.cal-num{font-size:15px;font-weight:600;color:#334155}
+.cal-cell.today .cal-num{color:#10b981;font-size:17px}
+.cal-cell.weekend .cal-num{color:#f97316}
+.cal-dots{display:flex;justify-content:center;gap:3px;margin-top:3px}
+.cal-dot{width:7px;height:7px;border-radius:50%;border:1.5px solid transparent;box-sizing:border-box}
+.cal-dot.selected{box-shadow:0 0 0 2px rgba(0,0,0,0.15)}
+.cal-legend{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.06);font-size:12px}
+.cal-legend-team{color:#1e293b;font-weight:700}
+.cal-legend-items{display:flex;gap:14px}
+.cal-legend-item{display:flex;align-items:center;gap:4px;color:#64748b}
+.cal-legend-dot{width:8px;height:8px;border-radius:50%;border:1.5px solid transparent;box-sizing:border-box}
+
+/* Schedule */
+.sched-tabs{display:flex;gap:8px;margin-bottom:14px}
+.sched-tab{flex:1;padding:9px;text-align:center;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid rgba(0,0,0,0.06);background:rgba(0,0,0,0.02);color:#94a3b8;transition:all 0.2s}
+.sched-tab.active{background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.3);color:#10b981}
+.sched-list{display:flex;flex-direction:column;gap:1px}
+.sched-item{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:8px;transition:all 0.2s}
+.sched-item.current{background:rgba(16,185,129,0.08)}
+.sched-item.past{opacity:0.35}
+.sched-time{font-size:14px;color:#94a3b8;font-variant-numeric:tabular-nums;width:52px;flex-shrink:0;font-weight:600}
+.sched-item.current .sched-time{color:#10b981}
+.sched-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:#cbd5e1}
+.sched-item.current .sched-dot{background:#10b981;width:9px;height:9px;box-shadow:0 0 6px rgba(16,185,129,0.4)}
+.sched-item.next .sched-dot{background:#f97316}
+.sched-name{font-size:14px;color:#334155;flex:1}
+.sched-item.current .sched-name{color:#1e293b;font-weight:700}
+.sched-status{font-size:11px;color:#10b981;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(16,185,129,0.1)}
+.sched-status.next{color:#f97316;background:rgba(249,115,22,0.1)}
+.sched-progress{margin-top:10px;display:flex;align-items:center;gap:10px}
+.sched-bar{flex:1;height:4px;background:rgba(0,0,0,0.06);border-radius:2px;overflow:hidden}
+.sched-bar-fill{height:100%;background:linear-gradient(90deg,#10b981,#34d399);border-radius:2px;transition:width 0.3s}
+.sched-count{font-size:12px;color:#94a3b8;font-variant-numeric:tabular-nums}
+
+/* Exam Plan */
+.exam-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.exam-tab{padding:6px 14px;text-align:center;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid rgba(0,0,0,0.06);background:rgba(0,0,0,0.02);color:#94a3b8;transition:all 0.2s}
+.exam-tab.active{background:rgba(59,130,246,0.1);border-color:rgba(59,130,246,0.3);color:#2563eb}
+.exam-panel{display:none}
+.exam-panel.active{display:block}
+.exam-info{background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.15);border-radius:10px;padding:12px;margin-bottom:14px}
+.exam-info-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+.exam-info-label{color:#64748b}
+.exam-info-val{color:#1e293b;font-weight:600}
+.exam-info-val.red{color:#dc2626}
+.exam-timeline{position:relative;padding-left:20px}
+.exam-timeline::before{content:'';position:absolute;left:5px;top:0;bottom:0;width:2px;background:linear-gradient(180deg,#3b82f6,#10b981);border-radius:1px}
+.exam-phase{position:relative;margin-bottom:16px}
+.exam-phase::before{content:'';position:absolute;left:-19px;top:4px;width:10px;height:10px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 0 2px rgba(59,130,246,0.2)}
+.exam-phase-title{font-size:14px;font-weight:700;color:#1e293b;margin-bottom:4px}
+.exam-phase-time{font-size:12px;color:#64748b;margin-bottom:6px}
+.exam-phase-body{font-size:13px;color:#475569;line-height:1.6}
+.exam-phase-body strong{color:#2563eb}
+.exam-subjects{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.exam-subj{background:rgba(0,0,0,0.03);border-radius:8px;padding:10px;border-left:3px solid #3b82f6}
+.exam-subj-name{font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px}
+.exam-subj-desc{font-size:11px;color:#64748b;line-height:1.5}
+.exam-subj-diff{font-size:11px;font-weight:700;margin-top:4px}
+.exam-step{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.04)}
+.exam-step:last-child{border-bottom:none}
+.exam-step-num{width:24px;height:24px;border-radius:50%;background:rgba(59,130,246,0.1);color:#2563eb;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.exam-step-body{font-size:13px;color:#475569;line-height:1.5}
+.exam-step-body strong{color:#1e293b}
+.exam-tip{background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:8px;padding:10px;font-size:12px;color:#475569;line-height:1.6;margin-top:8px}
+.exam-tip strong{color:#059669}
+
+/* Settings */
+.team-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.team-btn{background:rgba(0,0,0,0.02);border:2px solid rgba(0,0,0,0.06);border-radius:12px;padding:14px 0;text-align:center;font-size:20px;font-weight:700;color:#64748b;cursor:pointer;transition:all 0.2s}
+.team-btn.active{background:rgba(16,185,129,0.1);border-color:#10b981;color:#10b981;box-shadow:0 2px 8px rgba(16,185,129,0.15)}
+.input-group{margin-bottom:12px}
+.input-group label{display:block;font-size:12px;color:#94a3b8;margin-bottom:6px}
+.input-group input[type=date]{width:100%;padding:11px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.06);border-radius:8px;color:#334155;font-size:15px}
+.toggle-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(0,0,0,0.04)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-row span{font-size:14px;color:#334155}
+.toggle{position:relative;width:46px;height:25px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:rgba(0,0,0,0.1);border-radius:25px;transition:0.2s}
+.slider:before{content:'';position:absolute;width:19px;height:19px;left:3px;top:3px;background:#fff;border-radius:50%;transition:0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle input:checked+.slider{background:rgba(16,185,129,0.3)}
+.toggle input:checked+.slider:before{transform:translateX(21px);background:#10b981}
+.btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.15s;margin-top:8px}
+.btn-test{background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.2);color:#ea580c}
+.btn-test:active{transform:scale(0.97)}
+.btn-test2{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);color:#2563eb}
+.btn-test2:active{transform:scale(0.97)}
+.btn-stop{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#dc2626}
+.btn-stop:active{transform:scale(0.97)}
+.info{text-align:center;font-size:11px;color:#94a3b8;margin-top:14px}
+</style>
+</head>
+<body>
+<h1>倒班助手</h1>
+
+<!-- Calendar -->
+<div class="card">
+<div class="cal-header">
+<div class="cal-nav">
+<div class="cal-nav-btn" onclick="prevMonth()">&#9664;</div>
+<div class="cal-title" id="calTitle">2026年10月</div>
+<div class="cal-nav-btn" onclick="nextMonth()">&#9654;</div>
+<div class="cal-today-btn" onclick="goToday()">今天</div>
+</div>
+<div class="cal-tag" id="calTag">休息</div>
+</div>
+<div class="cal-grid" id="calGrid"></div>
+<div class="cal-legend">
+<div class="cal-legend-team" id="calTeam">甲组</div>
+<div class="cal-legend-items">
+<div class="cal-legend-item"><div class="cal-legend-dot" style="background:#FFF8DC;border-color:#000"></div>白班</div>
+<div class="cal-legend-item"><div class="cal-legend-dot" style="background:#1e293b;border-color:#FFF8DC"></div>夜班</div>
+<div class="cal-legend-item"><div class="cal-legend-dot" style="background:#10b981;border-color:#fff"></div>休息</div>
+</div>
+</div>
+</div>
+
+<!-- Schedule -->
+<div class="card">
+<div class="sched-tabs">
+<div class="sched-tab active" id="tabToday" onclick="switchTab(0)">今日日程</div>
+<div class="sched-tab" id="tabTomorrow" onclick="switchTab(1)">明日日程</div>
+</div>
+<div class="sched-list" id="schedList"></div>
+<div class="sched-progress" id="schedProgress" style="display:none">
+<div class="sched-bar"><div class="sched-bar-fill" id="schedBarFill" style="width:0%"></div></div>
+<div class="sched-count" id="schedCount">0/0</div>
+</div>
+</div>
+
+<!-- Exam Plan -->
+<div class="card">
+<h2>注册安全工程师备考</h2>
+<div class="exam-tabs">
+<div class="exam-tab active" onclick="switchExamTab(0)">考试信息</div>
+<div class="exam-tab" onclick="switchExamTab(1)">备考计划</div>
+<div class="exam-tab" onclick="switchExamTab(2)">报名流程</div>
+<div class="exam-tab" onclick="switchExamTab(3)">科目攻略</div>
+</div>
+
+<div class="exam-panel active" id="examPanel0">
+<div class="exam-info">
+<div class="exam-info-row"><span class="exam-info-label">考试日期</span><span class="exam-info-val red">2026年10月24日-25日</span></div>
+<div class="exam-info-row"><span class="exam-info-label">报名时间</span><span class="exam-info-val">8月4日-8月25日</span></div>
+<div class="exam-info-row"><span class="exam-info-label">报名网站</span><span class="exam-info-val">中国人事考试网 cpta.com.cn</span></div>
+<div class="exam-info-row"><span class="exam-info-label">考试周期</span><span class="exam-info-val">4年滚动</span></div>
+<div class="exam-info-row"><span class="exam-info-label">合格标准</span><span class="exam-info-val">60分/100分</span></div>
+</div>
+<div class="exam-info">
+<div class="exam-info-row"><span class="exam-info-label">Day 1 - 10月24日</span></div>
+<div class="exam-info-row"><span class="exam-info-label">上午 9:00-11:30</span><span class="exam-info-val">安全生产法律法规</span></div>
+<div class="exam-info-row"><span class="exam-info-label">下午 14:00-16:30</span><span class="exam-info-val">安全生产管理</span></div>
+</div>
+<div class="exam-info">
+<div class="exam-info-row"><span class="exam-info-label">Day 2 - 10月25日</span></div>
+<div class="exam-info-row"><span class="exam-info-label">上午 9:00-11:30</span><span class="exam-info-val">安全生产技术基础</span></div>
+<div class="exam-info-row"><span class="exam-info-label">下午 14:00-16:30</span><span class="exam-info-val">安全生产专业实务</span></div>
+</div>
+<div class="exam-info">
+<div class="exam-info-row"><span class="exam-info-label">专业选择</span></div>
+<div style="font-size:12px;color:#475569;line-height:1.8;margin-top:6px">煤矿安全 | 金属非金属矿山安全 | 化工安全 | 金属冶炼安全 | 建筑施工安全 | 道路运输安全 | 其他安全</div>
+</div>
+<div class="exam-tip"><strong>建议：</strong>结合你的倒班工作性质，建议选择"其他安全"专业（适用面广，难度相对适中）。4年滚动制意味着你可以在4年内分批通过4科，不必一次全过。</div>
+</div>
+
+<div class="exam-panel" id="examPanel1">
+<div class="exam-timeline">
+<div class="exam-phase">
+<div class="exam-phase-title">基础夯实期</div>
+<div class="exam-phase-time">2026年5月 - 6月（约60天）</div>
+<div class="exam-phase-body">
+每日学习<strong>2小时</strong>（倒班日利用休息时段，白班日晚上学，休息日全天学）<br>
+- 通读4科教材，建立知识框架<br>
+- 每章完成后做章节练习题<br>
+- <strong>目标：模拟测试≥50分</strong><br>
+- <strong>倒班策略：</strong>白班日18:00-20:00学法规；夜班日9:00-11:00学管理；休息日全天学技术基础
+</div>
+</div>
+<div class="exam-phase">
+<div class="exam-phase-title">强化突破期</div>
+<div class="exam-phase-time">2026年7月 - 8月（约60天）</div>
+<div class="exam-phase-body">
+每日学习<strong>3-4小时</strong><br>
+- 攻克重难点章节，结合网课视频<br>
+- 专业实务案例题专项训练<br>
+- 每章完成50道练习题，建立错题本<br>
+- <strong>目标：模拟测试≥65分</strong><br>
+- <strong>报名期间（8月4-25日）完成网上报名+缴费</strong><br>
+- <strong>倒班策略：</strong>夜班日增加2小时午间学习；休息日投入6-8小时
+</div>
+</div>
+<div class="exam-phase">
+<div class="exam-phase-title">真题冲刺期</div>
+<div class="exam-phase-time">2026年9月（约30天）</div>
+<div class="exam-phase-body">
+每日学习<strong>4-5小时</strong><br>
+- 严格按考试时间完成近5年真题<br>
+- 分析错题原因，查漏补缺<br>
+- 重点背诵法规条文和管理要点<br>
+- 专业实务案例题每天练2-3道<br>
+- <strong>目标：稳定≥70分</strong><br>
+- <strong>倒班策略：</strong>利用白班日18:00-23:00大量刷题；休息日模拟考试
+</div>
+</div>
+<div class="exam-phase">
+<div class="exam-phase-title">考前冲刺期</div>
+<div class="exam-phase-time">2026年10月1日 - 23日（约23天）</div>
+<div class="exam-phase-body">
+每日学习<strong>5-6小时</strong><br>
+- 回顾错题本，不碰新题<br>
+- 背诵考前速记手册<br>
+- 10月20-23日调整作息适应考试时间<br>
+- <strong>10月24日参加考试（法规+管理）</strong><br>
+- <strong>10月25日参加考试（技术基础+专业实务）</strong>
+</div>
+</div>
+</div>
+<div class="exam-tip"><strong>倒班人优势：</strong>你的休息日有完整大段时间，适合集中突破。白班日晚上有2-3小时可用于刷题。夜班日白天补觉后下午有3-4小时。合理利用碎片时间（通勤、午休）听网课音频。</div>
+</div>
+
+<div class="exam-panel" id="examPanel2">
+<div class="exam-step">
+<div class="exam-step-num">1</div>
+<div class="exam-step-body"><strong>注册账号</strong>：登录中国人事考试网（www.cpta.com.cn），新用户需注册账号并完成实名认证。老用户直接登录。</div>
+</div>
+<div class="exam-step">
+<div class="exam-step-num">2</div>
+<div class="exam-step-body"><strong>上传照片</strong>：下载"照片审核处理工具"处理证件照（白底，295x413px），上传系统审核通过。</div>
+</div>
+<div class="exam-step">
+<div class="exam-step-num">3</div>
+<div class="exam-step-body"><strong>填写报考信息</strong>：选择考试"中级注册安全工程师"、报考省份、审核点。填写学历、工作年限、专业等信息。</div>
+</div>
+<div class="exam-step">
+<div class="exam-step-num">4</div>
+<div class="exam-step-body"><strong>选择报考科目</strong>：首次报考建议选4科全报（滚动制4年内通过即可）。选择专业方向（建议"其他安全"）。</div>
+</div>
+<div class="exam-step">
+<div class="exam-step-num">5</div>
+<div class="exam-step-body"><strong>资格审核</strong>：系统自动核验学历信息。部分省份需人工审核（上传毕业证、工作证明等）。审核通过后才能缴费。</div>
+</div>
+<div class="exam-step">
+<div class="exam-step-num">6</div>
+<div class="exam-step-body"><strong>网上缴费</strong>：审核通过后在规定时间内缴费。各省费用约60-70元/科，4科约240-280元。缴费成功即报名完成。</div>
+</div>
+<div class="exam-step">
+<div class="exam-step-num">7</div>
+<div class="exam-step-body"><strong>打印准考证</strong>：考前1-2周登录报名网站打印准考证。核对考试地点、时间、座位号。</div>
+</div>
+<div class="exam-step">
+<div class="exam-step-num">8</div>
+<div class="exam-step-body"><strong>参加考试</strong>：携带准考证、身份证原件。10月24日考法规+管理，10月25日考技术基础+专业实务。</div>
+</div>
+<div class="exam-tip"><strong>报名条件（满足其一）：</strong>安全工程相关专业大专+5年/本科+3年；其他专业大专+7年/本科+4年；硕士+1-2年；博士+1年。需从事安全生产业务工作。具有高级工程师职称+10年经验可免试2科。</div>
+</div>
+
+<div class="exam-panel" id="examPanel3">
+<div class="exam-subjects">
+<div class="exam-subj" style="border-color:#10b981">
+<div class="exam-subj-name">安全生产法律法规</div>
+<div class="exam-subj-desc">客观题。考点细碎、更新快，侧重记忆与应用。易混淆条文多。</div>
+<div class="exam-subj-diff" style="color:#10b981">难度：★☆☆☆☆ 最容易</div>
+</div>
+<div class="exam-subj" style="border-color:#f97316">
+<div class="exam-subj-name">安全生产管理</div>
+<div class="exam-subj-desc">客观题。知识点系统、逻辑性强。概念多、干扰选项细，辨析要求高。</div>
+<div class="exam-subj-diff" style="color:#f97316">难度：★★☆☆☆ 居中</div>
+</div>
+<div class="exam-subj" style="border-color:#3b82f6">
+<div class="exam-subj-name">安全生产技术基础</div>
+<div class="exam-subj-desc">客观题。机械、电气、特种设备等专业内容偏理解。需一定工程基础。</div>
+<div class="exam-subj-diff" style="color:#3b82f6">难度：★★★☆☆ 偏上</div>
+</div>
+<div class="exam-subj" style="border-color:#dc2626">
+<div class="exam-subj-name">安全生产专业实务</div>
+<div class="exam-subj-desc">主客观混合。案例分析主观题，需综合运用+现场经验。公认最难。</div>
+<div class="exam-subj-diff" style="color:#dc2626">难度：★★★★☆ 最难</div>
+</div>
+</div>
+<div class="exam-tip">
+<strong>复习策略：</strong><br>
+1. 法规：每天背诵30分钟，关注新修订条文，用口诀记忆<br>
+2. 管理：建立知识思维导图，理解概念而非死记<br>
+3. 技术基础：结合视频和图片理解机械/电气原理，多做练习<br>
+4. 专业实务：最后3个月集中训练案例题，积累答题模板，分点作答
+</div>
+<div class="exam-tip" style="background:rgba(59,130,246,0.06);border-color:rgba(59,130,246,0.15)">
+<strong style="color:#2563eb">推荐资料：</strong><br>
+- 官方教材（应急管理出版社，每年5-6月更新）<br>
+- 历年真题（近5年，核心复习材料）<br>
+- 网课（环球网校/优路教育/233网校，免费试听）<br>
+- 刷题APP（注安万题库/安全工程师考试宝典）<br>
+- 考前速记手册（各机构10月发布）
+</div>
+</div>
+</div>
+
+<!-- Settings -->
+<div class="card">
+<h2>班组选择</h2>
+<div class="team-grid">
+<div class="team-btn" data-team="0" onclick="selectTeam(0)">甲</div>
+<div class="team-btn" data-team="1" onclick="selectTeam(1)">乙</div>
+<div class="team-btn" data-team="2" onclick="selectTeam(2)">丙</div>
+<div class="team-btn" data-team="3" onclick="selectTeam(3)">丁</div>
+</div>
+</div>
+
+<div class="card">
+<h2>参考日期</h2>
+<div class="input-group">
+<label>选择班次循环的起始日期</label>
+<input type="date" id="refDate" onchange="saveRefDate()">
+</div>
+</div>
+
+<div class="card">
+<h2>提醒设置</h2>
+<div class="toggle-row">
+<span>班次闹钟（仅震动）</span>
+<label class="toggle"><input type="checkbox" id="alarmEnabled" onchange="toggleAlarm()"><span class="slider"></span></label>
+</div>
+<div class="toggle-row">
+<span>活动提醒（仅震动）</span>
+<label class="toggle"><input type="checkbox" id="activityAlarmEnabled" onchange="toggleActivityAlarm()"><span class="slider"></span></label>
+</div>
+</div>
+
+<div class="card">
+<h2>测试与控制</h2>
+<button class="btn btn-test" onclick="testAlarm()">测试班次闹钟</button>
+<button class="btn btn-test2" onclick="testActivity()">测试活动提醒</button>
+<button class="btn btn-stop" onclick="stopVibration()">停止震动</button>
+</div>
+
+<div class="info">小组件每30秒自动刷新 · 活动提前5分钟震动提醒</div>
+
+<script>
+var CYCLE=["day","day","rest","rest","night","night","rest","rest"];
+var OFFSETS=[0,4,6,2];
+var TEAMS=["甲","乙","丙","丁"];
+var S_DAY=[[6,10],[6,35],[7,0],[7,25],[9,0],[12,0],[18,0],[20,40],[21,5],[21,25],[22,45],[23,0]];
+var N_DAY=["起床洗漱","拉伸+引体","洗澡","出门通勤","白班工作","午餐","晚餐","回到宿舍","洗澡","考公学习","趾压板","睡觉"];
+var S_NIGHT=[[9,0],[9,30],[10,0],[12,0],[13,0],[14,0],[16,0],[16,30],[17,30],[18,0],[19,25],[20,0]];
+var N_NIGHT=["起床洗漱","拉伸运动","考公学习","午餐","乒乓球","考公复习","引体+趾压板","打游戏","洗澡","晚餐","出门通勤","夜班工作"];
+var S_NIGHT2=[[9,20],[9,40],[10,0],[17,0],[17,20],[17,45],[18,20],[19,25],[20,0]];
+var N_NIGHT2=["回到宿舍","洗澡","睡觉补觉","起床洗漱","轻度拉伸","晚餐","自由时间","出门通勤","夜班工作"];
+var S_REST1=[[9,20],[9,40],[10,0],[15,0],[15,30],[16,0],[18,0],[18,30],[20,0],[21,30]];
+var N_REST1=["回到宿舍","洗澡","睡觉补觉","起床洗漱","散步+拉伸","考公学习","晚餐","考公刷题","打游戏","洗澡+早睡"];
+var S_REST=[[7,30],[8,0],[8,30],[9,0],[11,30],[12,0],[13,0],[14,0],[15,30],[15,50],[17,10],[17,30],[18,30],[20,0],[21,30]];
+var N_REST=["起床洗漱","拉伸+引体","早餐","考公学习","趾压板","午餐","午休","乒乓球","洗澡","考公刷题","拉伸","晚餐","考公复习","打游戏","洗澡+睡觉"];
+
+var team=0, refMs=0, currentTab=0;
+var now=new Date();
+var viewYear, viewMonth;
+
+function prevMonth(){viewMonth--;if(viewMonth<0){viewMonth=11;viewYear--;}renderCalendar();}
+function nextMonth(){viewMonth++;if(viewMonth>11){viewMonth=0;viewYear++;}renderCalendar();}
+function goToday(){now=new Date();viewYear=now.getFullYear();viewMonth=now.getMonth();renderCalendar();}
+
+function getCycleIdx(t,ref,date){
+var rd=new Date(ref); rd.setHours(0,0,0,0);
+var dd=new Date(date); dd.setHours(0,0,0,0);
+var diff=Math.round((dd-rd)/86400000);
+return ((diff+OFFSETS[t])%8+8)%8;
+}
+function shiftLabel(idx){
+if(idx<=1)return"白班"; if(idx<=3)return"休息"; if(idx<=5)return"夜班"; return"休息";
+}
+function shiftColor(type){
+if(type=="day")return"#FFF8DC"; if(type=="night")return"#1e293b"; return"#10b981";
+}
+function shiftOuter(type){
+if(type=="day")return"#000"; if(type=="night")return"#FFF8DC"; return"#fff";
+}
+function getSched(idx){
+if(idx<=1)return S_DAY; if(idx<=3)return S_REST; if(idx==4)return S_NIGHT; if(idx==5)return S_NIGHT2; if(idx==6)return S_REST1; return S_REST;
+}
+function getNames(idx){
+if(idx<=1)return N_DAY; if(idx<=3)return N_REST; if(idx==4)return N_NIGHT; if(idx==5)return N_NIGHT2; if(idx==6)return N_REST1; return N_REST;
+}
+
+function renderCalendar(){
+var y=viewYear||now.getFullYear(), m=viewMonth!=null?viewMonth:now.getMonth();
+if(viewYear==null){viewYear=y; viewMonth=m;}
+document.getElementById("calTitle").textContent=y+"\u5e74"+(m+1)+"\u6708";
+var ci=getCycleIdx(team,refMs,now);
+var sl=shiftLabel(ci);
+var sc=shiftColor(CYCLE[ci]);
+var tag=document.getElementById("calTag");
+tag.textContent=sl; tag.style.background=sc;
+document.getElementById("calTeam").textContent=TEAMS[team]+"\u7ec4";
+
+var grid=document.getElementById("calGrid");
+grid.innerHTML="";
+var hdrs=["\u4e00","\u4e8c","\u4e09","\u56db","\u4e94","\u516d","\u65e5"];
+for(var i=0;i<7;i++){
+var h=document.createElement("div");
+h.className="cal-hdr"+(i>=5?" weekend":"");
+h.textContent=hdrs[i]; grid.appendChild(h);
+}
+
+var first=new Date(y,m,1);
+var fdc=(first.getDay()+6)%7;
+var dim=new Date(y,m+1,0).getDate();
+var pdim=new Date(y,m,0).getDate();
+var todayD=now.getDate();
+var isViewCurrentMonth=(y==now.getFullYear()&&m==now.getMonth());
+
+for(var r=0;r<6;r++){
+for(var col=0;col<7;col++){
+var ci2=r*7+col, dn=ci2-fdc+1;
+var cell=document.createElement("div");
+cell.className="cal-cell";
+var other=dn<1||dn>dim;
+if(other)cell.className+=" other-month";
+if(!other&&col>=5)cell.className+=" weekend";
+if(!other&&dn==todayD&&isViewCurrentMonth)cell.className+=" today";
+
+var num=document.createElement("div");
+num.className="cal-num";
+if(dn<1)num.textContent=pdim+dn;
+else if(dn>dim)num.textContent=dn-dim;
+else num.textContent=dn;
+cell.appendChild(num);
+
+var dd=new Date(y,m,dn<1?pdim+dn:(dn>dim?dn-dim:dn));
+if(dn<1)dd=new Date(y,m-1,pdim+dn);
+if(dn>dim)dd=new Date(y,m+1,dn-dim);
+
+var dots=document.createElement("div");
+dots.className="cal-dots";
+for(var t=0;t<4;t++){
+var tc=getCycleIdx(t,refMs,dd);
+var dc=shiftColor(CYCLE[tc]);
+var oc=shiftOuter(CYCLE[tc]);
+var dot=document.createElement("div");
+dot.className="cal-dot"+(t==team&&!other?" selected":"");
+dot.style.background=other?dc+"60":dc;
+dot.style.borderColor=other?oc+"60":oc;
+dots.appendChild(dot);
+}
+cell.appendChild(dots);
+grid.appendChild(cell);
+}
+}
+
+renderSchedule();
+}
+
+function renderSchedule(){
+var d=new Date(now);
+if(currentTab==1)d.setDate(d.getDate()+1);
+var ci=getCycleIdx(team,refMs,d);
+var sched=getSched(ci), names=getNames(ci);
+var sc=shiftColor(CYCLE[ci]);
+
+var list=document.getElementById("schedList");
+list.innerHTML="";
+
+var curI=-1, nextI=-1;
+if(currentTab==0){
+var nm=now.getHours()*60+now.getMinutes();
+for(var i=0;i<sched.length;i++){
+var am=sched[i][0]*60+sched[i][1];
+if(am<=nm)curI=i;
+if(am>nm&&nextI<0)nextI=i;
+}
+}
+
+var si=0;
+if(currentTab==0&&curI>=0)si=Math.max(0,curI-1);
+else if(currentTab==0&&nextI>=0)si=Math.max(0,nextI-1);
+var maxItems=8;
+var ei=Math.min(sched.length,si+maxItems);
+if(ei-si<maxItems)si=Math.max(0,ei-maxItems);
+
+for(var i=si;i<ei;i++){
+var item=document.createElement("div");
+item.className="sched-item";
+var isCur=(i==curI), isNext=(i==nextI), isPast=(currentTab==0&&curI>=0&&i<curI);
+if(isCur)item.className+=" current";
+if(isNext)item.className+=" next";
+if(isPast)item.className+=" past";
+
+var time=document.createElement("div");
+time.className="sched-time";
+time.textContent=String(sched[i][0]).padStart(2,"0")+":"+String(sched[i][1]).padStart(2,"0");
+item.appendChild(time);
+
+var dot=document.createElement("div");
+dot.className="sched-dot";
+item.appendChild(dot);
+
+var name=document.createElement("div");
+name.className="sched-name";
+name.textContent=names[i];
+item.appendChild(name);
+
+if(isCur){
+var st=document.createElement("div");
+st.className="sched-status"; st.textContent="\u8fdb\u884c\u4e2d";
+item.appendChild(st);
+}else if(isNext){
+var st=document.createElement("div");
+st.className="sched-status next"; st.textContent="\u4e0b\u4e00\u4e2a";
+item.appendChild(st);
+}
+
+list.appendChild(item);
+}
+
+var prog=document.getElementById("schedProgress");
+if(currentTab==0&&sched.length>0){
+prog.style.display="flex";
+var pct=curI>=0?((curI+1)/sched.length*100):0;
+document.getElementById("schedBarFill").style.width=pct+"%";
+document.getElementById("schedCount").textContent=(curI>=0?(curI+1):0)+"/"+sched.length;
+}else{
+prog.style.display="none";
+}
+}
+
+function switchTab(t){
+currentTab=t;
+document.getElementById("tabToday").classList.toggle("active",t==0);
+document.getElementById("tabTomorrow").classList.toggle("active",t==1);
+renderSchedule();
+}
+
+function switchExamTab(t){
+document.querySelectorAll(".exam-tab").forEach(function(el,i){el.classList.toggle("active",i==t)});
+document.querySelectorAll(".exam-panel").forEach(function(el,i){el.classList.toggle("active",i==t)});
+}
+
+function selectTeam(t){
+team=t;
+document.querySelectorAll(".team-btn").forEach(function(b){b.classList.remove("active")});
+document.querySelector('[data-team="'+t+'"]').classList.add("active");
+Android.saveTeam(t);
+renderCalendar();
+}
+function saveRefDate(){
+var v=document.getElementById("refDate").value;
+Android.saveRefDate(v);
+refMs=new Date(v).getTime();
+renderCalendar();
+}
+function toggleAlarm(){Android.setAlarmEnabled(document.getElementById("alarmEnabled").checked)}
+function toggleActivityAlarm(){Android.setActivityAlarmEnabled(document.getElementById("activityAlarmEnabled").checked)}
+function testAlarm(){Android.testAlarm()}
+function testActivity(){Android.testActivityAlarm()}
+function stopVibration(){Android.stopVibration()}
+
+window.onload=function(){
+team=Android.getTeam();
+refMs=new Date(Android.getRefDate()).getTime();
+now=new Date();
+viewYear=now.getFullYear();
+viewMonth=now.getMonth();
+document.querySelector('[data-team="'+team+'"]').classList.add("active");
+document.getElementById("refDate").value=Android.getRefDate();
+document.getElementById("alarmEnabled").checked=Android.getAlarmEnabled();
+document.getElementById("activityAlarmEnabled").checked=Android.getActivityAlarmEnabled();
+renderCalendar();
+setInterval(function(){
+now=new Date();
+renderCalendar();
+},30000);
+};
+</script>
+</body>
+</html>
